@@ -13,7 +13,7 @@ int main (){
 	char str[100];
 	int tot = 0;
 	char c = 1;
-	char tabCarac[255];
+	int tabCarac[255];
 	int i;
 	int test = 1;
 	int fd1 [2];
@@ -23,8 +23,7 @@ int main (){
 
 	if ((pid1 = fork())){
 
-		//if ((pid2 = fork())){
-		
+		if ((pid2 = fork())){
 			do {
 
 				if ((test = read(0, &c, 1)) == -1){
@@ -37,31 +36,48 @@ int main (){
 				}
 				
 			}	while(test);			
-			c = 0;						
+			c = 0;				
 			write (fd1[1], &c, 1);
-			//write (fd2[1], &c, 1);
+			sleep(1);
+			write (fd2[1], &c, 1);			
+									
+			read(fd1[0], tabCarac, sizeof(int)*255);
+ 						
+
+			for(i = 97; i < 123; ++i){
+				printf("%c : %d\n", (char)i, tabCarac[i]);			
+			}		
+
 			read(fd2[0], &tot, sizeof(int));
 			
-			//read(desc1[0], &tabCarac, );
- 			printf ("\nResultat de la somme : %d\n", tot);
+			printf ("\nResultat de la somme : %d\n", tot);
+			wait(NULL);
 			exit (0);	
-			/*for(i = 0; i < strlen(tabCarac); ++i){
-				printf("");	*/		
-			/*}
 			
-		} else {  fils 2
+		} else {  
+			for (i = 0; i < 255; ++i){
+				tabCarac[i] = 0;
+			}
+			do{
+				read(fd2[0], &c, 1);
+																											
+				++tabCarac[c];
+			}while (c != 0);
+			sleep(1);
+			write(fd1[1], tabCarac, sizeof(int)*255);
+			exit(0);
 
-		}*/
+		}
 	} else { // fils 1
-		close(fd1[1]);
-		close(fd2[0]);
+
 		do{
 			read(fd1[0], &c, 1);
-
 																															
 			tot += atoi(&c);
-		}while (c != 0);
-		printf("tot %d", tot);
+		
+		}while (c != 0);		
+		sleep(1);
+					
 		write(fd2[1], &tot, sizeof(int));
 		exit(0);
 	}
