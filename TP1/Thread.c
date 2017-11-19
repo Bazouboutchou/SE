@@ -27,14 +27,14 @@ int main (){
 	char *messB;
 	char *mess = malloc(50);
 	strcpy(mess, "Main : ");
-    if(pthread_create(&threada, NULL, threadA, NULL) == -1) {
+  if(pthread_create(&threada, NULL, threadA, NULL) == -1) {
 		perror("pthread_create");
 		return -1;
-    }
-    if(pthread_create(&threadb, NULL, threadB, NULL) == -1) {
+  }
+  if(pthread_create(&threadb, NULL, threadB, NULL) == -1) {
 		perror("pthread_create");
 		return -1;
-    }
+  }
 	pthread_join(threadb, (void **)&messB);
 	printf("Main : %s", messB);
 	pthread_join(threada, (void **)&messA);
