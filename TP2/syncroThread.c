@@ -28,15 +28,15 @@ void* threadB(){
 int main (){
 	pthread_t threada;
 	pthread_t threadb;
-    if(pthread_create(&threada, NULL, threadA, NULL) == -1) {
+  if(pthread_create(&threadb, NULL, threadB, NULL) == -1) {
 		perror("pthread_create");
 		return -1;
-    }
-	pthread_join(threada, NULL);
+  }  
+	if(pthread_create(&threada, NULL, threadA, NULL) == -1) {
+		perror("pthread_create");
+		return -1;
+  }
 
-    if(pthread_create(&threadb, NULL, threadB, NULL) == -1) {
-		perror("pthread_create");
-		return -1;
-    }
+	pthread_join(threada, NULL);	
 	pthread_join(threadb, NULL);
 }
