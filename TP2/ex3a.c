@@ -1,0 +1,86 @@
+// https://ensiwiki.ensimag.fr/images/8/85/Pb_philosophes.pdf
+// https://sites.uclouvain.be/SystInfo/notes/Theorie/html/Threads/coordination.html
+#include <stdio.h>
+#include <stdio.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <time.h>
+#include <semaphore.h> 
+
+#define NO_PLACES 3
+#define NO_CARS   5
+
+
+sem_t places;//[NO_PLACES]; // un semaphore par voiture
+
+void enterParking(int carId){
+	printf("Voiture %d arrive dans le parking \n", carId);
+	sem_wait(&places);
+	printf("Voiture %d a trouve une place \n", carId);
+}
+
+void leaveParking(int carId){
+	sem_post(&places);
+	printf("Voiture %d est sortie \n", carId);
+}
+
+void* carLife(void * carId){
+	int enterTime = rand() % 10;
+	int leaveTime = rand() % 10;
+	printf("Voiture %d attend %d s avant d'entrer\n", (int) carId, enterTime);
+	sleep(enterTime);
+	enterParking((int)carId);
+	printf("Voiture %d attend %d s avant de sortir\n", (int) carId, leaveTime);
+	sleep(leaveTime);
+	leaveParking((int)carId);
+}
+
+
+int main(){
+	int i;
+ 	srand(time(NULL)); // initialisation de rand	
+	pthread_t threadCars[NO_CARS];
+	
+	sem_init(&places, 0, NO_PLACES);  		
+
+	for (i = 0; i < NO_CARS; ++i){
+	 	if(pthread_create(&threadCars[i], NULL, carLife, (void*)i) == -1) {
+			perror("pthread_create");
+			return -1;
+		}
+
+	}
+	for (i = 0; i < NO_CARS; ++i){		
+		pthread_join(threadCars[i], NULL);
+	}
+}
+
+
+/* trace 
+Voiture 4 attend 5 s avant d'entrer
+Voiture 3 attend 1 s avant d'entrer
+Voiture 2 attend 3 s avant d'entrer
+Voiture 1 attend 7 s avant d'entrer
+Voiture 0 attend 4 s avant d'entrer
+Voiture 3 arrive dans le parking 
+Voiture 3 a trouve une place 
+Voiture 3 attend 3 s avant de sortir
+Voiture 2 arrive dans le parking 
+Voiture 2 a trouve une place 
+Voiture 2 attend 7 s avant de sortir
+Voiture 0 arrive dans le parking 
+Voiture 0 a trouve une place 
+Voiture 0 attend 9 s avant de sortir
+Voiture 3 est sortie 
+Voiture 4 arrive dans le parking 
+Voiture 4 a trouve une place 
+Voiture 4 attend 5 s avant de sortir
+Voiture 1 arrive dans le parking 
+Voiture 2 est sortie 
+Voiture 1 a trouve une place 
+Voiture 1 attend 7 s avant de sortir
+Voiture 4 est sortie 
+Voiture 0 est sortie 
+Voiture 1 est sortie 
+*/
