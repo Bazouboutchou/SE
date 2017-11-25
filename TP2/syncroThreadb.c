@@ -7,29 +7,42 @@
 #include <sys/stat.h>        /* For mode constants */
 #include <fcntl.h>           /* For O_* constants */
 #include <sys/mman.h>
+#include <string.h>
 
-int i;
-int *partage;
+int* partage;
+
 void* threadA(){
-	printf("Thread A pair : %d \n", *partage);
+	do{
+		sleep(1);
+
+		if (*partage % 2 == 0)
+			printf("Thread A pair : %d \n", *partage);
+	}while (*partage != 1000);
+
 }
 
 void* threadB(){	
-	printf("Thread B impair : %d\n", *partage);
+	do{
+		sleep(1);
+
+		if (*partage % 2 != 0)
+			printf("Thread B impair : %d\n", *partage);
+	}while (*partage != 1000);
+
 }
 
 int main (){
 	pthread_t threada;
 	pthread_t threadb;
 	int fd; 
-	
 	int i;	
+
 	fd = shm_open("partage.mem", O_RDWR | O_CREAT, 0600);
 	if (fd == -1){
 		perror("shm_open");
 		exit(1);	
 	}
-	if ((ftruncate(fd, sizeof(int))) == -1){
+	if ((ftruncate(fd, 4096)) == -1){
 		perror("ftruncate failure");
 		exit(0);
 	}
@@ -39,23 +52,18 @@ int main (){
 		perror("mmap");
 		exit(1);	
 	}	
-	
-	for(i = 0; i <= 1000; ++i){
-		*partage = i; 
-		sleep(1);
-		if (i % 2 == 0){
-			if(pthread_create(&threada, NULL, threadA, NULL) == -1) {
-				perror("pthread_create");
-				return -1;
-			}
+	if(pthread_create(&threada, NULL, threadA, NULL) == -1) {
+		perror("pthread_create");
+		return -1;
+	}
+	if(pthread_create(&threadb, NULL, threadB, NULL) == -1) {
+		perror("pthread_create");
+		return -1;
+	}		
 
-		} else  {
-			if(pthread_create(&threadb, NULL, threadB, NULL) == -1) {
-				perror("pthread_create");
-				return -1;
-			}		
-		}	
-		
+	for(i = 0; i <= 1000; ++i){
+		memcpy(partage, &i, sizeof(int));
+		sleep(1);
 	}
 	pthread_join(threada, NULL);
 

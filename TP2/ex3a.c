@@ -12,7 +12,7 @@
 #define NO_CARS   5
 
 
-sem_t places;//[NO_PLACES]; // un semaphore par voiture
+sem_t places;//[NO_PLACES]; 
 
 void enterParking(int carId){
 	printf("Voiture %d arrive dans le parking \n", carId);
