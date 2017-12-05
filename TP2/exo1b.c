@@ -11,6 +11,10 @@
 
 int* partage; // donné partagé entre les threads
 
+/* 
+ * @brief : thread qui affiche les nombres pair en recuperant
+ * 					la valeur dans la donnee partagé
+ */
 void* threadA(){
 	do{
 		sleep(1);
@@ -21,6 +25,10 @@ void* threadA(){
 
 }
 
+/* 
+ * @brief : thread qui affiche les nombres impair en recuperant
+ * 					la valeur dans la donnee partagé
+ */
 void* threadB(){	
 	do{
 		sleep(1);

@@ -10,7 +10,8 @@
 int main (){
 	pid_t pid;
 	if ((pid = fork())){ // pere
-		sleep(1);
+		sleep(1); // laisse du temps pour montrer que le fils est dans une 
+						  // boucle infinie
 		kill(pid, SIGINT); // tue le fils
 		wait(NULL);
 		printf("Le fils est arrete");

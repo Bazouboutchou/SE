@@ -55,6 +55,9 @@ int main (){
 			wait(NULL); // attend les fils
 			
 		} else {  // fils 2
+			close(fd1[0]);
+			close(fd2[1]);
+
 			for (i = 0; i < 255; ++i){
 				tabCarac[i] = 0;
 			} // initilise le nombre des occurences à 0
@@ -65,11 +68,15 @@ int main (){
 			}while (c != 0); // tant que l'on recoit pas 0
 			sleep(1);
 			write(fd1[1], tabCarac, sizeof(int)*255); // renvoi au pere le tableau
+			close(fd1[1]);
+			close(fd2[0]);
+			
 			exit(0);
 
 		}
 	} else { // fils 1
-
+		close(fd1[1]);
+		close(fd2[0]);
 		do{
 			read(fd1[0], &c, sizeof(char)); // lit les entiers 
 																															
@@ -79,8 +86,16 @@ int main (){
 		sleep(1);
 					
 		write(fd2[1], &tot, sizeof(int)); // renvoi le total au pere
+		close(fd1[0]);
+		close(fd2[1]);
+
 		exit(0);
 	}	
+	close(fd1[1]);
+	close(fd2[0]);
+	close(fd1[0]);
+	close(fd2[1]);
+
 }
 
 /* trace : 

@@ -34,16 +34,20 @@ void entrer(int carId){
 	
 	sem_wait(&entrees); // on attend dans l'entree
 
-	int entree;
-	do { // tant que le semaphore est different de 0
-		sem_getvalue(&entrees, &entree);	// recupere la valeur du semaphore
+	if (nbCarEntree > NO_PLACES){ // si il y a plus de voiture que de place
+		int entree;
+		do { // tant que le semaphore est different de 0
+			sem_getvalue(&entrees, &entree);	// recupere la valeur du semaphore
+			
+			sem_wait(&entrees);		
+			
+		}	while (entree-1); // on fait attendre toutes les voitures dans l'entree
 		
-		sem_wait(&entrees);		
-		
-	}	while (entree && (nbCarEntree > NO_PLACES)); // on fait attendre toutes les voitures dans l'entree
-	sleep(1);	
-		
+	}	
 	
+
+	sleep(1);	
+
 	printf("Voiture %d sortie entree \n", carId);
 	sem_post(&entrees); // la voiture est sortie
 }
@@ -148,23 +152,3 @@ int main(){
 	} // on attend qu'ils finnissent tous
 }
 
-/* trace :
-Voiture 2 fait la queue dans lentree 
-Voiture 1 fait la queue dans lentree 
-Voiture 0 fait la queue dans lentree 
-Voiture 2 sortie entree 
-Voiture 2 a trouve une place 
-Voiture 2 libere la place 
-Voiture 2 arrive dans la sortie 
-Voiture 0 sortie entree 
-Voiture 0 a trouve une place 
-Voiture 2 sortie de sortie 
-Voiture 0 libere la place 
-Voiture 0 arrive dans la sortie 
-Voiture 1 sortie entree 
-Voiture 1 a trouve une place 
-Voiture 0 sortie de sortie 
-Voiture 1 libere la place 
-Voiture 1 arrive dans la sortie 
-Voiture 1 sortie de sortie 
-*/

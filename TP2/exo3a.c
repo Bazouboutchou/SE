@@ -52,7 +52,7 @@ void quitterPlace(int carId){
  *          attend un temps aléatoire et quitte le parking
  */
 void* carLife(void * carId){
-	int enterTime = rand() % 10; // rand entre 0 et 10
+	int enterTime = rand() % 10;
 	int leaveTime = rand() % 10;
 	printf("Voiture %d attend %d s avant d'entrer\n", (int) carId, enterTime);
 	sleep(enterTime);

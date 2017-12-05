@@ -45,8 +45,9 @@ void vie_des_fils(int *fd){
 			entier = -1;
 			write(fd2[1], &entier, sizeof(int));
 			wait(NULL);
+			close(fd2[1]);
 		} else{ // fils
-			vie_des_fils(fd2);
+			vie_des_fils(fd2);	
 			return;	
 		}	
 	}
@@ -71,6 +72,7 @@ int main(){
 		vie_des_fils(fd);
 		exit(0);	
 	}
+	close (fd[1]); 		
 
 	fclose(fdFile);
 }

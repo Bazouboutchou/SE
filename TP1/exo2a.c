@@ -49,7 +49,7 @@ int main (){
 	pthread_join(threadb, (void **)&messB); // attend threadB
 	printf("Main : %s", messB);
 	pthread_join(threada, (void **)&messA); // attend threadA
-	fprintf(stderr, "%s",strcat(mess, messA));		
+	fprintf(stderr, "%s",strcat(mess, messA));	// concatenation des 2 messages
 }
 
 

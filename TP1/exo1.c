@@ -12,8 +12,8 @@
  */
 void exo1(){
 	sleep(1);
-	printf("Le PID est : %d", getpid());
-	printf("\nLe PPID est : %d \n", getppid());	
+	printf("Le PID est : %d", getpid()); // pid du fils
+	printf("\nLe PPID est : %d \n", getppid());	// pid du pere
 }
 
 
@@ -29,6 +29,7 @@ void exo2(){
 	int i;
 	int tmp;
 	FILE * fd;
+
 	fd = fopen ("listeNbPremier.txt", "r");
 	
 	printf ("Pere : ");
@@ -38,7 +39,7 @@ void exo2(){
 		printf("%d ", tmp);
 	} // affiche les 10 premiers
 	printf("\n");
-	if (!(pid = fork())){ // pere
+	if (!(pid = fork())){ // fils
 	
 		//sleep (5);
 		printf ("Fils : ");
@@ -46,7 +47,7 @@ void exo2(){
 		for (i = 0; i < 20; ++i){
 			fscanf (fd, "%d", &tmp);
 			printf("%d ", tmp);
-		} // affiche les 20 suivant
+		} // affiche les 20 suivants 
 		printf("\n");
 		fclose (fd);
 		return;
@@ -54,7 +55,6 @@ void exo2(){
 		perror("fork");
 		return;	
 	}
-	sleep(2);
 	wait(&err); // on attend le fils
 	if (err == -1) printf("Erreur sur le fils");
 	printf ("Pere : ");
@@ -70,7 +70,7 @@ void exo2(){
 int main (){
 	exo1();
 	exo2();
-	return 1;
+
 }
 
 /* trace 
