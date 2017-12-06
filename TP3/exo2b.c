@@ -4,6 +4,8 @@
 #include <semaphore.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/mman.h>
 #include <time.h>
 
 sem_t *places;
@@ -12,15 +14,34 @@ sem_t *arret;
 
 sem_t *depart;
 
-int* partage; // element dans la memoire partage pour compter le temps 
+int* partage; // donné partagé entre les processus, elle me sert pour l'attente active
 
-void touristes(){
-	
-	int enterTime = rand() % 5; // rand entre 0 et 5
-	sleep (enterTime);
-	if (*partage) // si les 25 mins son pass
-		sem_wait(places); // si le temps d'attente est < 25 le touriste prend une place
-	exit(1);			
+void touristes(int i){
+	srand(i); // initialisation de rand avec i sinon nous auront le meme rand pour chaque
+
+	time_t departTime, arrivee;
+	int nbPlacesRestantes;
+	int enterTime = rand() % 500; // rand entre 0 et 500	
+	sleep (enterTime); // les touristes n'arrive pas en même temps 
+	long long int diffTime;
+ 	time(&departTime); // moment ou je commence le chrono
+	enterTime = rand() % 5;	
+	sleep (enterTime); // simulation du temps pour que les touristes prennent un ticket
+	do{	
+		sem_getvalue(places, &nbPlacesRestantes); // pour tester si il y a encore des places
+		time(&arrivee); // moment ou je stop le chrono
+		diffTime = arrivee - departTime; // calcul le temps mis
+		//si le touriste attend plus de 25 min il renonce 5s = 25min
+		if (diffTime > 5){
+		  printf("le touriste %d renonce \n", i);
+			exit(1);		
+		}
+	} while(!nbPlacesRestantes || !*partage); // temps qu'il n'y a pas de places dispo ou que la caisse ne soit pas ouverte
+  printf("le touriste  %d a prit un ticket\n", i);
+
+	sem_wait(places); // si le temps d'attente est < 25 le touriste prend une place
+	exit(1);
+				
 }
 
 void chauffeur(){
@@ -30,9 +51,10 @@ void chauffeur(){
 	int nbTouristes; 
 	do{	
 
-		sem_wait(depart);
+		sem_wait(depart); // on attend que la caisse finnisse 
+		
 		sleep(1); // pause de 5 min
-		sem_getvalue(places, &nbTouristes);
+		sem_getvalue(places, &nbTouristes); // recupere le nombre de place prisent
 		nbTouristes = 20 - nbTouristes; // calcul le nombre de touristes dans le bus		
 		printf("Chauffeur klaxone \n");
 		printf("Nombre de personnes embarquées : %d \n", nbTouristes);
@@ -44,24 +66,27 @@ void chauffeur(){
 		for(i = 0; i < nbTouristes; ++i){
 			sem_post(places); // les touristes sortent	
 		}
-	}while (duree < 9);
+	}while (duree < 10); // temps que l'on a pas realiser tous les cycles de 50 min
 	exit(1);
 }
 
 void caissier(){
 	printf("Ouverture de la caisse 8h45\n");
-	sleep(1);		
 	int duree = 0;
 	int tempsTotalMinutes = 45;
 	int tempsTotalHeures = 8; 
 	
 	do{
 		
+	
 		sleep(5); // attend 25 min de partir
-		*partage = 0;	
-		// depart 
-		sem_post(depart);
-		sem_wait(arret);
+		
+		sem_post(depart);// on dit au bus de partir
+		*partage = 0;
+		sem_wait(arret); // on arrete la vente
+		*partage = 1;   // on reprend la vente
+
+		// calcul de l'heure
 		if (tempsTotalMinutes + 50 >= 60)
 			++tempsTotalHeures;		
 		tempsTotalMinutes = (tempsTotalMinutes + 50)%60; // 25 + 5 +20 min de pause du chauffeur + 20 min de trajet
@@ -69,8 +94,8 @@ void caissier(){
 
 		printf("Caissier il est : %dh%d \n", tempsTotalHeures, tempsTotalMinutes);	
 		++duree;
-		*partage = 1;
-	}while (duree < 9); // nombre d'iteration jusqua 16h30
+
+	}while (duree < 10); // temps que l'on a pas realiser tous les cycles de 50 min
 	
 	printf("Arret de la vente 16h30\n");
 	exit(1);
@@ -78,22 +103,17 @@ void caissier(){
 
 
 int main (){
-	int i;
-	int fd;
- 	srand(time(NULL)); // initialisation de rand		
-	sem_unlink ("places");
-	sem_unlink ("arret"); 	
-	sem_unlink ("depart");
+	int fd; 
+	int i;	
 
-	places = sem_open ("places", O_CREAT|O_EXCL, 0644, 20);
-	arret  = sem_open ("arret" , O_CREAT|O_EXCL, 0644, 0);
-	depart = sem_open ("depart", O_CREAT|O_EXCL, 0644, 0);
 	fd = shm_open("partage.mem", O_RDWR | O_CREAT, 0644); // creer un segment memoire en lecture ecriture 
 	if (fd == -1){
 		perror("shm_open");
 		exit(1);	
 	}
 	if ((ftruncate(fd, 4096)) == -1){ //  tronquent le fichier référencé par path ou par le descripteur fd à une longueur d'exactement length octets.
+
+
 		perror("ftruncate failure");
 		exit(0);
 	}
@@ -103,8 +123,16 @@ int main (){
 	if (partage == MAP_FAILED){
 		perror("mmap");
 		exit(1);	
-	}		
-	memcpy(partage, 0, sizeof(int));
+	}	
+	sem_unlink ("places");
+	sem_unlink ("arret"); 	
+	sem_unlink ("depart");
+	
+	*partage = 1;
+
+	places = sem_open ("places", O_CREAT|O_EXCL, 0644, 20);
+	arret  = sem_open ("arret" , O_CREAT|O_EXCL, 0644, 0);
+	depart = sem_open ("depart", O_CREAT|O_EXCL, 0644, 0);
 	if (!fork()){
 		caissier();
 		exit(1);
@@ -115,14 +143,19 @@ int main (){
 		exit(1);
 	}
 
-
-	for (i 	= 0; i < 200; ++i){
+	sleep(1); // on laisse le caissier arrive
+	for (i = 1; i < 200; ++i){
 		if (!fork()){
-			touristes();
+			touristes(i);
 		}
 	}	
 
 	wait(NULL);
+	wait(NULL);
+	wait(NULL);	
+	for (i 	= 1; i < 200; ++i){
+		wait(NULL);
+	}	
 	sem_unlink ("places");
 	sem_unlink ("arret"); 	
 	sem_unlink ("depart");
