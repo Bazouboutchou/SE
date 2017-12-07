@@ -14,7 +14,17 @@ sem_t *arret;
 
 sem_t *depart;
 
-int* partage; // donné partagé entre les processus, elle me sert pour l'attente active
+
+typedef struct partage
+{
+   int achatTicket;
+   int finJournee;       /* name of the file */
+
+} partage_struct;
+//int* partage; // donné partagé entre les processus, elle me sert pour l'attente active
+//int* finJournnee;
+
+partage_struct* monPartage;
 
 void touristes(int i){
 	srand(i); // initialisation de rand avec i sinon nous auront le meme rand pour chaque
@@ -25,19 +35,19 @@ void touristes(int i){
 	sleep (enterTime); // les touristes n'arrive pas en même temps 
 	long long int diffTime;
  	time(&departTime); // moment ou je commence le chrono
-	enterTime = rand() % 5;	
-	sleep (enterTime); // simulation du temps pour que les touristes prennent un ticket
+	//enterTime = rand() % 5;	
+	//sleep (enterTime); // simulation du temps pour que les touristes prennent un ticket
 	do{	
 		sem_getvalue(places, &nbPlacesRestantes); // pour tester si il y a encore des places
 		time(&arrivee); // moment ou je stop le chrono
 		diffTime = arrivee - departTime; // calcul le temps mis
 		//si le touriste attend plus de 25 min il renonce 5s = 25min
-		if (diffTime > 5){
-		  printf("le touriste %d renonce \n", i);
+		if (diffTime > 5 || monPartage->finJournee){
+		//  printf("le touriste %d renonce \n", i);
 			exit(1);		
 		}
-	} while(!nbPlacesRestantes || !*partage); // temps qu'il n'y a pas de places dispo ou que la caisse ne soit pas ouverte
-  printf("le touriste  %d a prit un ticket\n", i);
+	} while(!nbPlacesRestantes || !monPartage->achatTicket); // temps qu'il n'y a pas de places dispo ou que la caisse ne soit pas ouverte
+	//printf("le touriste  %d a prit un ticket\n", i);
 
 	sem_wait(places); // si le temps d'attente est < 25 le touriste prend une place
 	exit(1);
@@ -46,7 +56,6 @@ void touristes(int i){
 
 void chauffeur(){
 
-	int duree = 0;	
 	int i;
 	int nbTouristes; 
 	do{	
@@ -54,19 +63,21 @@ void chauffeur(){
 		sem_wait(depart); // on attend que la caisse finnisse 
 		
 		sleep(1); // pause de 5 min
+
 		sem_getvalue(places, &nbTouristes); // recupere le nombre de place prisent
 		nbTouristes = 20 - nbTouristes; // calcul le nombre de touristes dans le bus		
 		printf("Chauffeur klaxone \n");
-		printf("Nombre de personnes embarquées : %d \n", nbTouristes);
-		sleep(4); // 20 min de transport
-		++duree;
-		printf("Arrive du chauffeur \n");
 		sem_post(arret); // le caissier recommence
 		
 		for(i = 0; i < nbTouristes; ++i){
 			sem_post(places); // les touristes sortent	
 		}
-	}while (duree < 10); // temps que l'on a pas realiser tous les cycles de 50 min
+
+		printf("Nombre de personnes embarquées : %d \n", nbTouristes);
+		sleep(4); // 20 min de transport
+		printf("Arrive du chauffeur \n");
+
+	}while (!monPartage->finJournee); // temps que l'on a pas realiser tous les cycles de 50 min
 	exit(1);
 }
 
@@ -75,27 +86,49 @@ void caissier(){
 	int duree = 0;
 	int tempsTotalMinutes = 45;
 	int tempsTotalHeures = 8; 
+	int nbPlacesRestantes;	
+	int fini = 0;
+	time_t departTime, arrivee;
+	long long int diffTime;
+ 	time(&departTime); // moment ou je commence le chrono
 	
 	do{
 		
-	
-		sleep(5); // attend 25 min de partir
+		sem_getvalue(places, &nbPlacesRestantes); // pour tester si il y a encore des places
+		time(&arrivee);
+		diffTime = arrivee - departTime;
 		
-		sem_post(depart);// on dit au bus de partir
-		*partage = 0;
-		sem_wait(arret); // on arrete la vente
-		*partage = 1;   // on reprend la vente
+		if ((diffTime >= 5 || !nbPlacesRestantes) || (tempsTotalHeures >= 16 && tempsTotalMinutes >= 30)){
+			// calcul de l'heure
+			if (tempsTotalMinutes + diffTime*5 >= 60)
+				++tempsTotalHeures;		
+			tempsTotalMinutes = (tempsTotalMinutes + diffTime*5)%60; // 25 + 5 +20 min de pause du chauffeur + 20 min de trajet
 
-		// calcul de l'heure
-		if (tempsTotalMinutes + 50 >= 60)
-			++tempsTotalHeures;		
-		tempsTotalMinutes = (tempsTotalMinutes + 50)%60; // 25 + 5 +20 min de pause du chauffeur + 20 min de trajet
-		
+			// le bus commence seulement à 9h
+			if (nbPlacesRestantes == 0 && tempsTotalHeures < 9){
+				sleep(60-tempsTotalMinutes); // on attend le nombre de min restantes avant 9h
+				tempsTotalHeures = 9;
+				tempsTotalMinutes = 0;
+			}
 
-		printf("Caissier il est : %dh%d \n", tempsTotalHeures, tempsTotalMinutes);	
-		++duree;
+			monPartage->achatTicket = 0;
+			printf("Caissier ferme la vente à : %dh%d \n", tempsTotalHeures, tempsTotalMinutes);	
+			sem_post(depart);// on dit au bus de partir
+			sem_wait(arret); // on arrete la vente
+			if (tempsTotalMinutes + 5 >= 60)
+				++tempsTotalHeures;		
+			tempsTotalMinutes = (tempsTotalMinutes + 5)%60; // 25 + 5 +20 min de pause du chauffeur + 20 min de trajet
+			printf("Caissier reouvre la vente à : %dh%d \n", tempsTotalHeures, tempsTotalMinutes);	
 
-	}while (duree < 10); // temps que l'on a pas realiser tous les cycles de 50 min
+			monPartage->achatTicket = 1;   // on reprend la vente			
+		 	time(&departTime); // moment ou je commence le chrono
+			if(tempsTotalHeures >= 16 && tempsTotalMinutes >= 30){
+				monPartage->finJournee = 1;
+			}
+
+		}// si le caissier a attendu 25 min il part 		
+
+	}while (!fini); // temps que l'on a pas realiser tous les cycles de 50 min
 	
 	printf("Arret de la vente 16h30\n");
 	exit(1);
@@ -105,7 +138,7 @@ void caissier(){
 int main (){
 	int fd; 
 	int i;	
-
+	
 	fd = shm_open("partage.mem", O_RDWR | O_CREAT, 0644); // creer un segment memoire en lecture ecriture 
 	if (fd == -1){
 		perror("shm_open");
@@ -119,8 +152,8 @@ int main (){
 	}
 	
 	//  crée une nouvelle projection dans l'espace d'adressage virtuel du processus appelant. la vaiable partage est mappé en memoire protegé en lecture et ecriture 
-	partage = (int*) mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-	if (partage == MAP_FAILED){
+	monPartage = (partage_struct*) mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	if (monPartage == MAP_FAILED){
 		perror("mmap");
 		exit(1);	
 	}	
@@ -128,8 +161,8 @@ int main (){
 	sem_unlink ("arret"); 	
 	sem_unlink ("depart");
 	
-	*partage = 1;
-
+	monPartage->achatTicket = 1;
+	monPartage->finJournee = 0;
 	places = sem_open ("places", O_CREAT|O_EXCL, 0644, 20);
 	arret  = sem_open ("arret" , O_CREAT|O_EXCL, 0644, 0);
 	depart = sem_open ("depart", O_CREAT|O_EXCL, 0644, 0);
@@ -143,7 +176,6 @@ int main (){
 		exit(1);
 	}
 
-	sleep(1); // on laisse le caissier arrive
 	for (i = 1; i < 200; ++i){
 		if (!fork()){
 			touristes(i);
